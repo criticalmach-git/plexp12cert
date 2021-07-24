@@ -12,6 +12,7 @@ script_folder=/mnt/user/appdata/swag/etc/letsencrypt/plexp12
 #Folder and name you want for your p12 file
 p12_file_path=$script_folder/plexcertificate.p12
 #Add password to the p12 file (you can leave it empty)
+#Whatever you enter here will go in the "Custom certificate encryption key" field in the plex server network settings
 p12cert_password=
 #Unraid's Default swag cert folder
 swag_cert_folder=/mnt/user/appdata/swag/etc/letsencrypt/live/example.com
