@@ -58,6 +58,7 @@ if expr "$generate_p12" "=" "true" > /dev/null; then
     chmod +r $p12_file_path
     chown nobody:users $p12_file_path
     echo "Relaunching Plex Docker..."
+# change "plex" to the name of your plex docker if it differs.    
     docker restart plex
     echo "Done."
 fi
