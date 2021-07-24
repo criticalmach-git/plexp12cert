@@ -1,0 +1,63 @@
+#!/bin/sh
+########################################################
+#This script will create a new p12 certificate for Plex
+#when SWAG automatically renew its one
+#Mathieu Noublanche - 2017-08-10 v0.3 - Author
+########################################################
+
+########################################################
+#Just adapt the values below to your configuration
+#Location of your script
+script_folder=/mnt/user/appdata/swag/etc/letsencrypt/plexp12
+#Folder and name you want for your p12 file
+p12_file_path=$script_folder/plexcertificate.p12
+#Add password to the p12 file (you can leave it empty)
+p12cert_password=
+#Unraid's Default swag cert folder
+swag_cert_folder=/mnt/user/appdata/swag/etc/letsencrypt/live/example.com
+
+########################################################
+#Changes below are at your own own risk
+######################################################## 
+generate_p12=false
+current_date=`date +"%s"`
+current_certificate_date=`openssl x509 -enddate -noout -in $swag_cert_folder/cert.pem | cut -d'=' -f2`
+current_certificate_timestamp=`date -d "$current_certificate_date" +"%s"`
+
+#First, we check if the renew_timestamp file exists (this file keep in memory the further certificate renew date)
+if [ ! -f $script_folder/renew_timestamp ]; then
+    echo "Generate timestamp for the current renew date... "
+    echo $current_certificate_timestamp > $script_folder/renew_timestamp
+    chmod +rw $script_folder/renew_timestamp
+    chown nobody:users $script_folder/renew_timestamp
+    #We generate the p12 file
+    generate_p12=true
+else
+    renew_date=`cat $script_folder/renew_timestamp`
+    echo "In memory certificate expiration date is" `date -d @$renew_date` "and the current certificate expiration date is $current_certificate_date"
+    #Now, we check if is it necessary to renew the certificate or not
+    if expr "$current_certificate_timestamp" "!=" "$renew_date" > /dev/null; then
+        #We ask to generate a new p12 file
+        echo "Date doesn't match, we have to renew the certificate..."
+        generate_p12=true
+        #We update the timestamp_date on the file
+        echo "Updating the new timestamp date..."
+        echo $current_certificate_timestamp > $script_folder/renew_timestamp
+    else
+        echo "It is not necessary to renew the certificate, abort."
+        exit 0
+    fi
+fi
+
+#We generate a new certificate file if we ask it, and we relaunch plex docker to take effect
+if expr "$generate_p12" "=" "true" > /dev/null; then
+
+    echo "Generating the p12 certificate file..."
+    openssl pkcs12 -export -out $p12_file_path -in $swag_cert_folder/cert.pem -inkey $swag_cert_folder/privkey.pem -certfile $swag_cert_folder/chain.pem -name "Domain" -password pass:$p12cert_password
+
+    chmod +r $p12_file_path
+    chown nobody:users $p12_file_path
+    echo "Relaunching Plex Docker..."
+    docker restart plex
+    echo "Done."
+fi
